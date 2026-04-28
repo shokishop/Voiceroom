@@ -1,0 +1,13 @@
+project_id = "knrajfgtenlmcbjkihgd"
+
+[functions.create-room]
+verify_jwt = false
+
+[functions.join-room]
+verify_jwt = false
+
+[functions.leave-room]
+verify_jwt = false
+
+[functions.cleanup-rooms]
+verify_jwt = false
