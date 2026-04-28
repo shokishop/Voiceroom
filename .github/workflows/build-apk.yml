@@ -1,0 +1,66 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Setup Java 21
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+    
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+    
+    - name: Install dependencies
+      run: npm install
+    
+    - name: Build web app
+      run: npm run build
+    
+    - name: Install Capacitor packages
+      run: |
+        npm install -g @capacitor/cli
+        npm install @capacitor/core @capacitor/android
+    
+    - name: Initialize Capacitor (if not already done)
+      run: |
+        if [ ! -f capacitor.config.ts ] && [ ! -f capacitor.config.js ]; then
+          npx cap init "Live Room Chat" "com.example.liveroomchat"
+        fi
+    
+    - name: Add Android platform
+      run: npx cap add android
+    
+    - name: Copy web assets to native project
+      run: npx cap copy android
+    
+    - name: Sync Capacitor
+      run: npx cap sync android
+    
+    - name: Build APK
+      run: |
+        cd android
+        chmod +x ./gradlew
+        ./gradlew assembleDebug
+    
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug-apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
