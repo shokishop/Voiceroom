@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "charms": { "type": "number" },
+        "charmsTotal": { "type": "number" },
+        "level": { "type": "number" },
+        "lastActiveAt": { "type": "string" },
+        "onboardingCompleted": { "type": "boolean" },
+        "fingerprintEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Chat room information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "maxMembers": { "type": "number" },
+        "activeMembers": { "type": "number" },
+        "lastActivity": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "code", "creatorId"]
+    },
+    "RoomMember": {
+      "title": "Room Member",
+      "description": "Membership in a room",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string" },
+        "userId": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomId", "userId"]
+    },
+    "RoomMessage": {
+      "title": "Room Message",
+      "description": "Messages sent in a room",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string" },
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "messageType": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomId", "userId", "content"]
+    },
+    "DirectMessage": {
+      "title": "Direct Message",
+      "description": "Private messages between users",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "content": { "type": "string" },
+        "messageType": { "type": "string" },
+        "readAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "receiverId", "content"]
+    },
+    "UserConnection": {
+      "title": "User Connection",
+      "description": "Friend connections between users",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "friendId": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "friendId", "status"]
+    },
+    "CharmsTransaction": {
+      "title": "Charms Transaction",
+      "description": "History of charms currency updates",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "source": { "type": "string" },
+        "metadata": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount"]
+    }
+  },
+  "firestore": {
+    "profiles": { "schema": "Profile", "description": "User profiles" },
+    "rooms": { "schema": "Room", "description": "Chat rooms" },
+    "rooms/{roomId}/members": { "schema": "RoomMember", "description": "Room membership" },
+    "rooms/{roomId}/messages": { "schema": "RoomMessage", "description": "Room chat history" },
+    "direct_messages": { "schema": "DirectMessage", "description": "Direct messages" },
+    "user_connections": { "schema": "UserConnection", "description": "Friendships" },
+    "charms_transactions": { "schema": "CharmsTransaction", "description": "Currency transactions" }
+  }
+}

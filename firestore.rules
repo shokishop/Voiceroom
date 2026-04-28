@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validations
+    function isValidProfile(data) {
+      return data.keys().hasAll(['userId', 'email']) 
+        && data.userId == request.auth.uid
+        && data.email is string && data.email.size() <= 256
+        && (data.username == null || (data.username is string && data.username.size() <= 50))
+        && (data.displayName == null || (data.displayName is string && data.displayName.size() <= 100))
+        && (data.charms is number)
+        && (data.level is number);
+    }
+
+    function isValidRoom(data) {
+      return data.keys().hasAll(['name', 'code', 'creatorId'])
+        && data.name is string && data.name.size() <= 100
+        && data.code is string && data.code.size() == 6
+        && data.creatorId == request.auth.uid
+        && data.isPublic is bool
+        && data.maxMembers is number
+        && data.activeMembers is number;
+    }
+
+    function isValidRoomMember(data) {
+      return data.keys().hasAll(['roomId', 'userId'])
+        && isValidId(data.roomId)
+        && data.userId is string
+        && data.isActive is bool;
+    }
+
+    function isValidRoomMessage(data) {
+      return data.keys().hasAll(['roomId', 'userId', 'content'])
+        && isValidId(data.roomId)
+        && data.userId == request.auth.uid
+        && data.content is string && data.content.size() <= 5000;
+    }
+
+    function isValidDirectMessage(data) {
+      return data.keys().hasAll(['senderId', 'receiverId', 'content'])
+        && data.senderId == request.auth.uid
+        && data.receiverId is string
+        && data.content is string && data.content.size() <= 5000;
+    }
+
+    // Collection Rules
+    match /profiles/{profileId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.isPublic == true);
+      allow create: if isEmailVerified() && isValidProfile(incoming());
+      allow update: if isEmailVerified() && isOwner(existing().userId) && isValidProfile(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['username', 'displayName', 'avatarUrl', 'charms', 'level', 'lastActiveAt', 'onboardingCompleted', 'fingerprintEnabled', 'updatedAt']);
+    }
+
+    match /rooms/{roomId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (resource.data.isPublic == true || exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)));
+      allow create: if isEmailVerified() && isValidRoom(incoming());
+      allow update: if isEmailVerified() && (
+        isOwner(existing().creatorId) || 
+        exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+      ) && isValidRoom(incoming())
+      && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'isPublic', 'activeMembers', 'lastActivity', 'updatedAt']);
+
+      match /members/{memberId} {
+        allow read: if isSignedIn() && (isOwner(memberId) || exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)));
+        allow write: if isEmailVerified() && (isOwner(memberId) || isOwner(get(/databases/$(database)/documents/rooms/$(roomId)).data.creatorId)) && isValidRoomMember(incoming());
+      }
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
+        allow create: if isEmailVerified() && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)) && isValidRoomMessage(incoming());
+        allow delete: if isEmailVerified() && (isOwner(existing().userId) || isOwner(get(/databases/$(database)/documents/rooms/$(roomId)).data.creatorId));
+      }
+    }
+
+    match /direct_messages/{messageId} {
+      allow read: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+      allow create: if isEmailVerified() && isValidDirectMessage(incoming());
+      allow update: if isEmailVerified() && resource.data.receiverId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['readAt', 'updatedAt']);
+    }
+
+    match /user_connections/{connectionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.friendId == request.auth.uid);
+      allow write: if isEmailVerified() && (incoming().userId == request.auth.uid || incoming().friendId == request.auth.uid);
+    }
+  }
+}
